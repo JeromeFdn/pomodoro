@@ -17,7 +17,7 @@ RUNNING IT
 ----------
 The simplest path is GitHub Pages. Push these files to a repo, enable Pages
 (Settings > Pages > deploy from the main branch), and open the URL it gives you,
-for example https://jeromefdn.github.io/<repo>/pomodoro.html.
+for example https://jeromefdn.github.io/<repo>pomodoro.html.
 
 You can also open pomodoro.html straight from disk, but two things degrade that
 way: desktop notifications may not prompt or persist (a local file has no stable
