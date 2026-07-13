@@ -1,0 +1,699 @@
+<div id="pomodoro-root"></div>
+<style>
+  #pomodoro-root {
+    --ink: #1b2624;
+    --focus: #2f6f5e;
+    --focus-dim: #1e463b;
+    --rest: #c97b63;
+    --rest-dim: #8a4f3d;
+    --paper: #f4f1ea;
+    --paper-dim: #e7e2d6;
+    --line: rgba(27,38,36,0.14);
+    --mono: 'SF Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+
+    all: initial;
+    box-sizing: border-box;
+    display: block;
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--paper);
+    border-radius: 18px;
+    padding: 0;
+    max-width: 460px;
+    margin: 0 auto;
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  #pomodoro-root *, #pomodoro-root *::before, #pomodoro-root *::after { box-sizing: border-box; }
+
+  .pm-stage {
+    padding: 36px 32px 28px;
+    text-align: center;
+    transition: background 0.6s ease;
+  }
+  .pm-stage.focus { background: linear-gradient(180deg, var(--focus) 0%, var(--focus-dim) 100%); color: var(--paper); }
+  .pm-stage.rest { background: linear-gradient(180deg, var(--rest) 0%, var(--rest-dim) 100%); color: var(--paper); }
+  .pm-stage.idle { background: var(--paper-dim); color: var(--ink); }
+
+  .pm-mode {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    opacity: 0.75;
+    margin-bottom: 14px;
+  }
+  .pm-time {
+    font-family: var(--mono);
+    font-size: 64px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pm-sub {
+    font-size: 13px;
+    opacity: 0.85;
+    min-height: 18px;
+    margin-bottom: 20px;
+  }
+  .pm-controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .pm-btn {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1.5px solid currentColor;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .pm-btn:hover { background: rgba(255,255,255,0.15); }
+  .pm-btn:active { transform: scale(0.97); }
+  .pm-btn.solid { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+  .pm-btn.solid:hover { background: #fff; }
+  .pm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pm-btn.small { padding: 7px 12px; font-size: 11.5px; }
+
+  .pm-ack-banner {
+    background: #fff;
+    color: var(--ink);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 4px;
+    font-size: 13.5px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+  }
+  .pm-ack-banner strong { display:block; font-size: 14px; margin-bottom: 2px; }
+
+  .pm-lower { padding: 20px 28px 26px; background: var(--paper); }
+  .pm-section-title {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6b7674;
+    margin: 0 0 10px;
+  }
+  .pm-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .pm-stat {
+    background: var(--paper-dim);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .pm-stat .n {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .pm-stat .l {
+    font-size: 10.5px;
+    color: #6b7674;
+    margin-top: 6px;
+    line-height: 1.3;
+  }
+
+  .pm-history { display: flex; flex-direction: column; gap: 6px; max-height: 130px; overflow-y: auto; margin-bottom: 18px; }
+  .pm-history-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--paper-dim);
+  }
+  .pm-history-row .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: var(--focus);
+    color: var(--paper);
+  }
+  .pm-history-row.off .tag { background: #b8b2a2; color: var(--ink); }
+  .pm-history-empty { font-size: 12px; color: #8a938f; padding: 10px 0; text-align: center; }
+
+  .pm-settings { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 12.5px; }
+  .pm-settings label { display: flex; align-items: center; gap: 6px; }
+  .pm-settings input[type="number"] {
+    width: 52px;
+    padding: 5px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+  .pm-settings select.pm-period {
+    padding: 5px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    background: #fff;
+    color: var(--ink);
+  }
+  .pm-settings .days { display: flex; gap: 4px; }
+  .pm-day-btn {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--paper-dim);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .pm-day-btn.on { background: var(--focus); color: var(--paper); border-color: var(--focus); }
+
+  .pm-foot-note { font-size: 10.5px; color: #9a9c8e; margin-top: 16px; text-align: center; }
+</style>
+
+<script>
+(function() {
+  const root = document.getElementById('pomodoro-root');
+
+  const FOCUS_SECONDS = 25 * 60;
+  const REST_SECONDS = 5 * 60;
+  const STORAGE_KEY = 'pomodoro-data';
+  const DAY_LABELS = ['S','M','T','W','T','F','S'];
+
+  let state = {
+    mode: 'idle',       // idle | focus | awaiting-ack | rest
+    secondsLeft: FOCUS_SECONDS,
+    running: false,
+    sessions: [],        // { ts: number, duringWorkHours: bool }
+    settings: { workStart: 9, workEnd: 17, workDays: [1,2,3,4,5] }
+  };
+
+  let tickHandle = null;
+  let targetEnd = null;      // wall-clock ms when the running phase hits 0
+  let worker = null;         // background ticker (throttled far less than main thread)
+  let workerActive = false;
+  let workerBlocked = false; // sandbox/CSP blocked Worker creation
+  let audioCtx = null;
+  let audioNodes = null;
+
+  root.innerHTML = `
+    <div class="pm-stage idle" id="pmStage">
+      <div class="pm-mode" id="pmMode">READY</div>
+      <div class="pm-time" id="pmTime">25:00</div>
+      <div class="pm-sub" id="pmSub">A 25 minute focus block, then a 5 minute break.</div>
+      <div class="pm-controls" id="pmControls">
+        <button class="pm-btn solid" id="pmStart">Start focus</button>
+      </div>
+      <div id="pmAckSlot"></div>
+      <audio id="pmBreakAudio" loop preload="auto">
+        <source src="break-audio.mp3" type="audio/mpeg" />
+        <source src="break-audio.ogg" type="audio/ogg" />
+      </audio>
+    </div>
+    <div class="pm-lower">
+      <div class="pm-section-title">Today</div>
+      <div class="pm-stats">
+        <div class="pm-stat"><div class="n" id="statToday">0</div><div class="l">sessions<br/>today</div></div>
+        <div class="pm-stat"><div class="n" id="statWork">0</div><div class="l">during<br/>work hours</div></div>
+        <div class="pm-stat"><div class="n" id="statWeek">0</div><div class="l">last 7<br/>days</div></div>
+      </div>
+      <div style="text-align:center; margin-bottom:20px;">
+        <button class="pm-btn small" id="pmNewDay" style="border-color:#6b7674; color:#6b7674;">Start new day</button>
+      </div>
+      <div class="pm-section-title">Recent sessions</div>
+      <div class="pm-history" id="pmHistory"></div>
+      <div class="pm-section-title">Work hours (for tracking only)</div>
+      <div class="pm-settings">
+        <label>From
+          <input type="number" id="wStartHour" min="1" max="12" style="width:36px;" />
+          <select id="wStartPeriod" class="pm-period"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </label>
+        <label>To
+          <input type="number" id="wEndHour" min="1" max="12" style="width:36px;" />
+          <select id="wEndPeriod" class="pm-period"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </label>
+        <div class="days" id="dayPicker"></div>
+      </div>
+      <div class="pm-foot-note">Break audio loops break-audio.mp3 hosted alongside this page. Falls back to synthesized ambient sound if that file is missing.</div>
+    </div>
+  `;
+
+  const stageEl = document.getElementById('pmStage');
+  const modeEl = document.getElementById('pmMode');
+  const timeEl = document.getElementById('pmTime');
+  const subEl = document.getElementById('pmSub');
+  const controlsEl = document.getElementById('pmControls');
+  const ackSlot = document.getElementById('pmAckSlot');
+  const statToday = document.getElementById('statToday');
+  const statWork = document.getElementById('statWork');
+  const statWeek = document.getElementById('statWeek');
+  const historyEl = document.getElementById('pmHistory');
+  const wStartHourInput = document.getElementById('wStartHour');
+  const wStartPeriodInput = document.getElementById('wStartPeriod');
+  const wEndHourInput = document.getElementById('wEndHour');
+  const wEndPeriodInput = document.getElementById('wEndPeriod');
+  const dayPicker = document.getElementById('dayPicker');
+
+  function to24Hour(hour12, period) {
+    let h = parseInt(hour12) || 12;
+    h = Math.max(1, Math.min(12, h));
+    if (period === 'AM') return h === 12 ? 0 : h;
+    return h === 12 ? 12 : h + 12;
+  }
+
+  function to12Hour(hour24) {
+    const period = hour24 >= 12 ? 'PM' : 'AM';
+    let h = hour24 % 12;
+    if (h === 0) h = 12;
+    return { hour: h, period };
+  }
+
+  function fmt(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+  }
+
+  function isWorkMoment(date, settings) {
+    const day = date.getDay();
+    const hour = date.getHours();
+    if (!settings.workDays.includes(day)) return false;
+    return hour >= settings.workStart && hour < settings.workEnd;
+  }
+
+  function isSameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  // window.storage only exists inside a Claude artifact. Opened as a plain file
+  // or hosted on a normal page it's undefined, so fall back to localStorage.
+  const store = (window.storage && typeof window.storage.get === 'function')
+    ? window.storage
+    : {
+        get: async (key) => {
+          const v = localStorage.getItem(key);
+          return v === null ? null : { value: v };
+        },
+        set: async (key, value) => { localStorage.setItem(key, value); }
+      };
+
+  async function loadData() {
+    try {
+      const res = await store.get(STORAGE_KEY, false);
+      if (res && res.value) {
+        const parsed = JSON.parse(res.value);
+        state.sessions = parsed.sessions || [];
+        state.settings = Object.assign(state.settings, parsed.settings || {});
+      }
+    } catch (e) {
+      // no data yet
+    }
+    const s12 = to12Hour(state.settings.workStart);
+    const e12 = to12Hour(state.settings.workEnd);
+    wStartHourInput.value = s12.hour;
+    wStartPeriodInput.value = s12.period;
+    wEndHourInput.value = e12.hour;
+    wEndPeriodInput.value = e12.period;
+    renderDayPicker();
+    renderStats();
+  }
+
+  async function saveData() {
+    try {
+      await store.set(STORAGE_KEY, JSON.stringify({ sessions: state.sessions, settings: state.settings }), false);
+    } catch (e) {
+      console.error('save failed', e);
+    }
+  }
+
+  function renderDayPicker() {
+    dayPicker.innerHTML = '';
+    DAY_LABELS.forEach((label, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'pm-day-btn' + (state.settings.workDays.includes(idx) ? ' on' : '');
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        const i = state.settings.workDays.indexOf(idx);
+        if (i >= 0) state.settings.workDays.splice(i,1);
+        else state.settings.workDays.push(idx);
+        renderDayPicker();
+        renderStats();
+        saveData();
+      });
+      dayPicker.appendChild(btn);
+    });
+  }
+
+  function onWorkStartChange() {
+    state.settings.workStart = to24Hour(wStartHourInput.value, wStartPeriodInput.value);
+    renderStats(); saveData();
+  }
+  function onWorkEndChange() {
+    state.settings.workEnd = to24Hour(wEndHourInput.value, wEndPeriodInput.value);
+    renderStats(); saveData();
+  }
+  wStartHourInput.addEventListener('change', onWorkStartChange);
+  wStartPeriodInput.addEventListener('change', onWorkStartChange);
+  wEndHourInput.addEventListener('change', onWorkEndChange);
+  wEndPeriodInput.addEventListener('change', onWorkEndChange);
+
+  function renderStats() {
+    const now = new Date();
+    const todaySessions = state.sessions.filter(s => isSameDay(new Date(s.ts), now));
+    const workSessions = todaySessions.filter(s => s.duringWorkHours);
+    const weekCutoff = now.getTime() - 7 * 24 * 3600 * 1000;
+    const weekSessions = state.sessions.filter(s => s.ts >= weekCutoff);
+
+    statToday.textContent = todaySessions.length;
+    statWork.textContent = workSessions.length;
+    statWeek.textContent = weekSessions.length;
+
+    if (state.sessions.length === 0) {
+      historyEl.innerHTML = '<div class="pm-history-empty">No completed sessions yet.</div>';
+      return;
+    }
+    const recent = state.sessions.slice(-8).reverse();
+    historyEl.innerHTML = recent.map(s => {
+      const d = new Date(s.ts);
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = isSameDay(d, now) ? 'Today' : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return `<div class="pm-history-row ${s.duringWorkHours ? '' : 'off'}">
+        <span>${dateStr}, ${timeStr}</span>
+        <span class="tag">${s.duringWorkHours ? 'work hours' : 'off hours'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // --- Break audio: a file you host next to this page ---
+  // Drop break-audio.mp3 (and optionally .ogg) in the same folder on GitHub.
+  // No third party, no iframe, so nothing blocks it. If the file is missing or
+  // playback is refused, we fall back to synthesized ambient noise below.
+  let fallbackTimer = null;
+
+  function startAmbientAudio() {
+    const el = document.getElementById('pmBreakAudio');
+    clearTimeout(fallbackTimer);
+    if (el) {
+      try {
+        el.currentTime = 0;
+        el.volume = 0.6;
+        const p = el.play();
+        if (p && p.catch) {
+          p.catch((err) => {
+            console.warn('[pomodoro] break audio file could not play (missing or blocked):', err && err.message);
+            startFallbackAmbient();
+          });
+        }
+      } catch (e) {
+        console.warn('[pomodoro] break audio error', e);
+        startFallbackAmbient();
+      }
+    }
+    // Safety net: if nothing is actually playing shortly after, use the synth.
+    fallbackTimer = setTimeout(() => {
+      const a = document.getElementById('pmBreakAudio');
+      if (!a || a.paused || a.error) startFallbackAmbient();
+    }, 1200);
+  }
+
+  function stopAmbientAudio() {
+    clearTimeout(fallbackTimer);
+    const el = document.getElementById('pmBreakAudio');
+    if (el) { try { el.pause(); el.currentTime = 0; } catch (e) {} }
+    stopFallbackAmbient();
+  }
+
+  // Synthesized brown-noise ambient. No network, no iframe, no autoplay policy
+  // fight: created after a click gesture, it plays anywhere the chime does.
+  let fbCtx = null;
+  let fbNodes = null;
+  function startFallbackAmbient() {
+    if (fbCtx) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+      const size = 2 * ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, size, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < size; i++) {
+        const white = Math.random() * 2 - 1;
+        last = (last + 0.02 * white) / 1.02;
+        data[i] = last * 3.5;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 600;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+      src.start();
+      gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 2);
+      fbCtx = ctx; fbNodes = { src, gain };
+    } catch (e) { /* audio unavailable */ }
+  }
+
+  function stopFallbackAmbient() {
+    if (!fbCtx) return;
+    const ctx = fbCtx, nodes = fbNodes;
+    fbCtx = null; fbNodes = null;
+    try {
+      nodes.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+      setTimeout(() => { try { nodes.src.stop(); ctx.close(); } catch (e) {} }, 600);
+    } catch (e) { try { ctx.close(); } catch (e2) {} }
+  }
+
+  function playChime() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        g.gain.value = 0;
+        osc.connect(g);
+        g.connect(ctx.destination);
+        const start = ctx.currentTime + i * 0.15;
+        g.gain.linearRampToValueAtTime(0.12, start + 0.05);
+        g.gain.linearRampToValueAtTime(0, start + 1.2);
+        osc.start(start);
+        osc.stop(start + 1.3);
+      });
+      setTimeout(() => { try { ctx.close(); } catch(e){} }, 2000);
+    } catch (e) { /* audio unavailable */ }
+  }
+
+  function render() {
+    stageEl.className = 'pm-stage ' + (state.mode === 'focus' ? 'focus' : state.mode === 'rest' ? 'rest' : state.mode === 'awaiting-ack' ? 'rest' : 'idle');
+    timeEl.textContent = fmt(state.secondsLeft);
+
+    if (state.mode === 'idle') {
+      modeEl.textContent = 'READY';
+      subEl.textContent = 'A 25 minute focus block, then a 5 minute break.';
+      controlsEl.innerHTML = '';
+      const btn = document.createElement('button');
+      btn.className = 'pm-btn solid';
+      btn.textContent = 'Start focus';
+      btn.onclick = startFocus;
+      controlsEl.appendChild(btn);
+      ackSlot.innerHTML = '';
+    } else if (state.mode === 'focus') {
+      modeEl.textContent = 'FOCUS';
+      subEl.textContent = state.running ? 'Heads down. I\u2019ll let you know at 25 minutes.' : 'Paused.';
+      controlsEl.innerHTML = '';
+      controlsEl.appendChild(makeBtn(state.running ? 'Pause' : 'Resume', toggleRunning));
+      controlsEl.appendChild(makeBtn('Reset', resetToIdle, 'small'));
+      ackSlot.innerHTML = '';
+    } else if (state.mode === 'awaiting-ack') {
+      modeEl.textContent = 'FOCUS COMPLETE';
+      subEl.textContent = '';
+      controlsEl.innerHTML = '';
+      ackSlot.innerHTML = `
+        <div class="pm-ack-banner">
+          <div>
+            <strong>25 minutes done.</strong>
+            Acknowledge to start a 5 minute break with ambient sound.
+          </div>
+          <button class="pm-btn solid" id="ackBtn" style="align-self:center;">Acknowledge & start break</button>
+        </div>
+      `;
+      document.getElementById('ackBtn').onclick = acknowledgeAndRest;
+    } else if (state.mode === 'rest') {
+      modeEl.textContent = 'BREAK';
+      subEl.textContent = state.running ? 'Ambient sound is playing. Back to focus when this ends.' : 'Paused.';
+      controlsEl.innerHTML = '';
+      controlsEl.appendChild(makeBtn(state.running ? 'Pause' : 'Resume', toggleRunning));
+      controlsEl.appendChild(makeBtn('Skip break', endRestEarly, 'small'));
+      ackSlot.innerHTML = '';
+    }
+  }
+
+  function makeBtn(label, onClick, extraClass) {
+    const b = document.createElement('button');
+    b.className = 'pm-btn' + (extraClass ? ' ' + extraClass : '');
+    b.textContent = label;
+    b.onclick = onClick;
+    return b;
+  }
+
+  function clearTick() {
+    if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+    if (worker && workerActive) { worker.postMessage('stop'); workerActive = false; }
+  }
+
+  // Background ticker. Web Worker timers survive background throttling that
+  // freezes main-thread setInterval. If the sandbox blocks Worker creation we
+  // fall back to the main-thread interval alone (foreground still works; the
+  // wall-clock reconciliation below keeps time honest either way).
+  function ensureWorker() {
+    if (worker !== null || workerBlocked) return worker;
+    try {
+      const src = 'var h=null;onmessage=function(e){if(e.data==="start"){if(h)clearInterval(h);h=setInterval(function(){postMessage("tick");},500);}else if(e.data==="stop"){if(h){clearInterval(h);h=null;}}};';
+      const blob = new Blob([src], { type: 'application/javascript' });
+      worker = new Worker(URL.createObjectURL(blob));
+      worker.onmessage = function() { onTick(); };
+    } catch (e) {
+      worker = null;
+      workerBlocked = true;
+    }
+    return worker;
+  }
+
+  // Single source of truth for the countdown: derive remaining seconds from the
+  // wall clock, not from a tick count. A throttled or skipped tick no longer
+  // loses time; the next tick self-corrects.
+  function onTick() {
+    if (!state.running || targetEnd === null) return;
+    const remaining = Math.ceil((targetEnd - Date.now()) / 1000);
+    if (remaining <= 0) {
+      state.secondsLeft = 0;
+      if (state.mode === 'focus') {
+        clearTick();
+        state.mode = 'awaiting-ack';
+        state.running = false;
+        notifyFocusComplete();
+        playChime();
+        render();
+      } else if (state.mode === 'rest') {
+        clearTick();
+        endRest();
+      }
+      return;
+    }
+    if (remaining !== state.secondsLeft) {
+      state.secondsLeft = remaining;
+      timeEl.textContent = fmt(state.secondsLeft);
+    }
+  }
+
+  function requestNotifyPermission() {
+    try {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    } catch (e) { /* not available in this context */ }
+  }
+
+  function notifyFocusComplete() {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+        new Notification('Focus block done', { body: '25 minutes complete. Time for a break.' });
+      }
+    } catch (e) { /* notifications unavailable */ }
+  }
+
+  function startFocus() {
+    requestNotifyPermission();
+    state.mode = 'focus';
+    state.secondsLeft = FOCUS_SECONDS;
+    state.running = true;
+    render();
+    runTick();
+  }
+
+  function toggleRunning() {
+    state.running = !state.running;
+    if (state.running) runTick(); else clearTick();
+    render();
+  }
+
+  function resetToIdle() {
+    clearTick();
+    stopAmbientAudio();
+    state.mode = 'idle';
+    state.secondsLeft = FOCUS_SECONDS;
+    state.running = false;
+    render();
+  }
+
+  // Returns to READY from any mode (idle, mid-focus, awaiting-ack, or break),
+  // stopping the timer and break audio. Does not touch recorded session history,
+  // so today's stats and the 7-day count stay intact.
+  function startNewDay() {
+    resetToIdle();
+  }
+
+  function runTick() {
+    clearTick();
+    targetEnd = Date.now() + state.secondsLeft * 1000;
+    // Run both: the interval covers the foreground (and works if the Worker is
+    // blocked); the Worker keeps firing when the tab is backgrounded.
+    tickHandle = setInterval(onTick, 500);
+    const w = ensureWorker();
+    if (w) { workerActive = true; w.postMessage('start'); }
+    onTick();
+  }
+
+  async function acknowledgeAndRest() {
+    const now = new Date();
+    state.sessions.push({ ts: now.getTime(), duringWorkHours: isWorkMoment(now, state.settings) });
+
+    // Switch to break and start audio synchronously, while the click's user
+    // activation is still valid, so the browser allows play().
+    state.mode = 'rest';
+    state.secondsLeft = REST_SECONDS;
+    state.running = true;
+    startAmbientAudio();
+    render();
+    runTick();
+
+    await saveData();
+    renderStats();
+  }
+
+  function endRest() {
+    stopAmbientAudio();
+    startFocus();
+  }
+
+  function endRestEarly() {
+    clearTick();
+    stopAmbientAudio();
+    startFocus();
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.running) onTick();
+  });
+
+  document.getElementById('pmNewDay').onclick = startNewDay;
+
+  loadData();
+  render();
+})();
+</script>
