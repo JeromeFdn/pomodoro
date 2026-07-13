@@ -9,6 +9,7 @@ HTML file. No build step, no server, no dependencies.
 CONTENTS
 --------
   pomodoro.html    The whole app: markup, styles, and logic in one file.
+  index.html       Same as above, just renamed.
   break-audio.mp3  The loop that plays during breaks. Swap it for any mp3.
   README.txt       This file.
 
